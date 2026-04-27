@@ -1237,6 +1237,192 @@
     border: 1px solid var(--line);
   }
 
+  /* ============== ジャイロライブグラフ ============== */
+  .gyro-live-card { position: relative; }
+  .gyro-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 10px 0;
+  }
+  .gyro-stat {
+    flex: 1 1 88px;
+    min-width: 88px;
+    background: var(--card-soft);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .gyro-stat-label {
+    font-size: 10px;
+    font-family: "JetBrains Mono", monospace;
+    color: var(--ink-soft);
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .gyro-stat-val {
+    font-family: "Orbitron", "JetBrains Mono", monospace;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .gyro-stat-unit {
+    font-size: 10px;
+    color: var(--ink-soft);
+    font-family: "JetBrains Mono", monospace;
+  }
+  #gyroCanvas {
+    width: 100%;
+    height: 220px;
+    display: block;
+    background: linear-gradient(180deg, rgba(10,16,36,0.65), rgba(5,8,22,0.85));
+    border-radius: 10px;
+    border: 1px solid var(--line);
+  }
+  .gyro-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-family: "JetBrains Mono", monospace;
+  }
+  .gyro-legend .dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .gyro-legend .dot-gz     { background: var(--neon-cyan); box-shadow: 0 0 6px var(--neon-cyan); }
+  .gyro-legend .dot-accum  { background: var(--neon-amber); box-shadow: 0 0 6px var(--neon-amber); }
+  .gyro-legend .dot-peak   { background: #ff6e6e; box-shadow: 0 0 6px #ff6e6e; }
+  .gyro-legend .dot-marker { background: var(--neon-pink);  box-shadow: 0 0 6px var(--neon-pink); }
+  .gyro-thresholds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 10px;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .gyro-thresholds .thr {
+    padding: 2px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    background: var(--card-soft);
+  }
+  .gyro-thresholds .thr-curve { color: var(--neon-cyan);  border-color: rgba(76,201,255,0.35); }
+  .gyro-thresholds .thr-180   { color: var(--neon-pink);  border-color: rgba(255,93,209,0.35); }
+  .gyro-thresholds .thr-90    { color: var(--neon-amber); border-color: rgba(255,194,74,0.35); }
+
+  /* ====== ジャイロライブのツールバーとスクロール UI ====== */
+  .gyro-toolbar {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .gyro-live-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--card-soft);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 120ms ease;
+    user-select: none;
+    letter-spacing: 0.06em;
+  }
+  .gyro-live-btn .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #999;
+    box-shadow: none;
+  }
+  .gyro-live-btn.live {
+    color: #66f0a8;
+    border-color: rgba(102,240,168,0.45);
+    background: rgba(102,240,168,0.08);
+  }
+  .gyro-live-btn.live .live-dot {
+    background: #66f0a8;
+    box-shadow: 0 0 6px #66f0a8;
+    animation: gyroLivePulse 1.4s ease-in-out infinite;
+  }
+  .gyro-live-btn.paused {
+    color: #ffa84a;
+    border-color: rgba(255,168,74,0.45);
+    background: rgba(255,168,74,0.08);
+  }
+  .gyro-live-btn.paused .live-dot {
+    background: #ffa84a;
+  }
+  @keyframes gyroLivePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.7); }
+  }
+  .gyro-scrollbar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    padding: 0 4px;
+  }
+  .gyro-scrollbar {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(76,201,255,0.2), rgba(76,201,255,0.45));
+    outline: none;
+    cursor: pointer;
+  }
+  .gyro-scrollbar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(76,201,255,0.7);
+    cursor: grab;
+    border: 2px solid #0a0a14;
+  }
+  .gyro-scrollbar::-webkit-slider-thumb:active { cursor: grabbing; }
+  .gyro-scrollbar::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(76,201,255,0.7);
+    cursor: grab;
+    border: 2px solid #0a0a14;
+  }
+  .gyro-window-info {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--ink-dim);
+    min-width: 130px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  /* キャンバスでマウスドラッグ中のカーソル */
+  #gyroCanvas { cursor: grab; }
+  #gyroCanvas.dragging { cursor: grabbing; }
+  #gyroCanvas.live { cursor: default; }
+
   /* ============== 紙吹雪 ============== */
   .confetti {
     position: absolute;
@@ -1423,6 +1609,64 @@
             </div>
           </div>
         </div>
+
+        <div class="card gyro-live-card">
+          <div class="card-title">
+            <span>ジャイロライブ (Z軸角速度)</span>
+            <div class="gyro-toolbar">
+              <button class="gyro-live-btn live" id="btnGyroLive" title="クリックでLIVE/PAUSEDをトグル">
+                <span class="live-dot"></span><span id="gyroLiveLabel">LIVE</span>
+              </button>
+              <button class="history-clear-btn" id="btnGyroCsv" title="走行ログをCSVで書き出し (高解像度ログがあれば優先、なければリアルタイム notify を)">CSV</button>
+              <button class="history-clear-btn" id="btnGyroBulkReq" title="高解像度ログを Arduino から再要求">再取得</button>
+              <button class="history-clear-btn" id="btnGyroClear">クリア</button>
+            </div>
+          </div>
+          <div class="gyro-stats">
+            <div class="gyro-stat">
+              <span class="gyro-stat-label">gz</span>
+              <span class="gyro-stat-val" id="gyroStatGz">0</span>
+              <span class="gyro-stat-unit">dps</span>
+            </div>
+            <div class="gyro-stat">
+              <span class="gyro-stat-label">∫gz dt / peak</span>
+              <span class="gyro-stat-val" id="gyroStatAccum" style="font-size: 16px;">0 / 0</span>
+              <span class="gyro-stat-unit">deg</span>
+            </div>
+            <div class="gyro-stat">
+              <span class="gyro-stat-label">max amp</span>
+              <span class="gyro-stat-val" id="gyroStatAmp">0</span>
+              <span class="gyro-stat-unit">dps</span>
+            </div>
+            <div class="gyro-stat">
+              <span class="gyro-stat-label">zero-cross</span>
+              <span class="gyro-stat-val" id="gyroStatZc">0</span>
+              <span class="gyro-stat-unit"></span>
+            </div>
+            <div class="gyro-stat">
+              <span class="gyro-stat-label">候補</span>
+              <span class="gyro-stat-val" id="gyroStatCand" style="font-size: 13px;">--</span>
+              <span class="gyro-stat-unit"></span>
+            </div>
+          </div>
+          <canvas id="gyroCanvas" width="600" height="220"></canvas>
+          <div class="gyro-scrollbar-row">
+            <input type="range" min="0" max="1000" value="1000" step="1" class="gyro-scrollbar" id="gyroScrollbar" />
+            <div class="gyro-window-info" id="gyroWindowInfo">--</div>
+          </div>
+          <div class="gyro-legend">
+            <span><span class="dot dot-gz"></span>gz (dps, 左軸)</span>
+            <span><span class="dot dot-accum"></span>累積角度 (deg, 右軸)</span>
+            <span><span class="dot dot-peak"></span>累積ピーク (deg, 右軸)</span>
+            <span><span class="dot dot-marker"></span>確定セグメント</span>
+          </div>
+          <div class="gyro-thresholds">
+            <span class="thr thr-curve">±100 dps : カーブ判定下限</span>
+            <span class="thr thr-180">±110° : 180° 判定下限</span>
+            <span class="thr thr-90">±50° : 90° 判定下限</span>
+          </div>
+          <div class="hires-status" id="hiresStatus" style="margin-top:8px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--ink-dim);text-align:center;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1546,6 +1790,8 @@ var CHAR_CURSEG   = '12345678-1234-5678-1234-56789abcdef6';
 var CHAR_MATCHIDX = '12345678-1234-5678-1234-56789abcdef7';
 var CHAR_MATCHED  = '12345678-1234-5678-1234-56789abcdef8';
 var CHAR_SPEED    = '12345678-1234-5678-1234-56789abcdefa';
+var CHAR_GYRO     = '12345678-1234-5678-1234-56789abcdefb';
+var CHAR_BULK     = '12345678-1234-5678-1234-56789abcdefc';
 
 // ============================================================
 // タブ切替
@@ -2000,6 +2246,14 @@ function connectToDevice(device) {
       svc.getCharacteristic(CHAR_SPEED).catch(function() {
         dbg('警告: speed 無し (古いファーム)');
         return null;
+      }),
+      svc.getCharacteristic(CHAR_GYRO).catch(function() {
+        dbg('警告: gyro 無し (古いファーム)');
+        return null;
+      }),
+      svc.getCharacteristic(CHAR_BULK).catch(function() {
+        dbg('警告: bulk 無し (古いファーム)');
+        return null;
       })
     ]);
   })
@@ -2013,16 +2267,24 @@ function connectToDevice(device) {
     chars.matchidx = c[6];
     chars.matched  = c[7];
     chars.speed    = c[8];
+    chars.gyro     = c[9];
+    chars.bulk     = c[10];
 
     var promises = [
       chars.curseg.startNotifications().then(function() {
         chars.curseg.addEventListener('characteristicvaluechanged', function(e) {
-          liveCurrentSeg = e.target.value.getUint8(0);
+          var newSeg = e.target.value.getUint8(0);
+          // BLE notify が同一値で複数回 dispatch されることがある (Web Bluetooth/ArduinoBLE の
+          // バンドリング挙動)。直前と同じ segId なら無視して履歴の重複を防ぐ。
+          if (newSeg === liveCurrentSeg) return;
+          liveCurrentSeg = newSeg;
           updateLiveSegment();
           var s = SEG_BY_ID[liveCurrentSeg];
           dbg('検出: ' + (s ? s.label : '?') + ' (id=' + liveCurrentSeg + ')');
           // 認識履歴に追加
           if (s) addToHistory(liveCurrentSeg);
+          // ジャイログラフにマーカー追加
+          if (liveCurrentSeg !== 0) pushGyroMarker(liveCurrentSeg);
         });
       }),
       chars.matchidx.startNotifications().then(function() {
@@ -2043,6 +2305,28 @@ function connectToDevice(device) {
           chars.matched.addEventListener('characteristicvaluechanged', function(e) {
             if (e.target.value.getUint8(0) === 1) showCorrect();
           });
+        })
+      );
+    }
+
+    if (chars.gyro) {
+      promises.push(
+        chars.gyro.startNotifications().then(function() {
+          chars.gyro.addEventListener('characteristicvaluechanged', onGyroNotify);
+          dbg('ジャイロライブ受信開始');
+        }).catch(function(e) {
+          dbg('ジャイロ subscribe 失敗: ' + e.message);
+        })
+      );
+    }
+
+    if (chars.bulk) {
+      promises.push(
+        chars.bulk.startNotifications().then(function() {
+          chars.bulk.addEventListener('characteristicvaluechanged', onBulkNotify);
+          dbg('高解像度バルク受信準備完了');
+        }).catch(function(e) {
+          dbg('bulk subscribe 失敗: ' + e.message);
         })
       );
     }
@@ -2346,6 +2630,15 @@ function runCountdown() {
   function showStep() {
     if (stepIdx >= steps.length) {
       overlay.classList.remove('show');
+      // 走行開始時にジャイロライブグラフ・履歴をリセット
+      // (前回走行のデータが混ざらないように)
+      clearGyroBuffer();
+      // 高解像度バッファもリセット + 走行開始時刻を記録
+      hiresBuf = [];
+      hiresLastSeq = -1;
+      hiresReceiving = false;
+      hiresStartTs = performance.now();
+      setHiresStatus('走行中…走行終了で高解像度ログを自動取得します', '#7ad7ff');
       sendCommand(1);
       return;
     }
@@ -2897,6 +3190,721 @@ function renderCourseRun() {
   legend.style.display = 'flex';
 }
 
+// ============================================================
+// ジャイロライブ受信 & グラフ描画
+// ============================================================
+// ・50Hz で送られてくるジャイロパケットを 5分 (= 15000サンプル)
+//   バッファに保持。表示ウィンドウは 8秒で、スライダー/マウスドラッグで
+//   過去に遡って閲覧可能。CSVエクスポート対応。
+// ・gz (左軸 ±2000dps), 累積角度 (右軸 ±360deg) を二軸プロット。
+// ・セグメントが確定したタイミングを縦線マーカーとして上にオーバレイ。
+
+var GYRO_BUF_LEN     = 15000;  // 50Hz × 300秒 = 5分ぶん
+var GYRO_GZ_RANGE    = 2000;   // dps (左軸の上限)
+var GYRO_ACCUM_RANGE = 360;    // deg (右軸の上限)
+var GYRO_VIEW_MS     = 8000;   // 表示ウィンドウの幅 (ms)
+
+var gyroBuf       = [];       // 各要素 { t, gz, accum, peak, amp, zc, cand }
+var gyroMarkers   = [];       // セグメント確定マーカー { t, segId }
+var gyroFirstMs   = 0;        // 受信開始時刻 (相対時間表示用)
+var gyroRafPending = false;
+var gyroLastDraw   = 0;
+
+// ----- 高解像度バルクバッファ (200Hz相当) -----
+// Arduino 側が走行終了時に bulkChar 経由で送ってくる、200Hz サンプリングの
+// gz 全履歴。CSV エクスポートで「真の高解像度ログ」を出力するために使う。
+// 配列の各要素は単純な float (gz dps)。サンプリング間隔は固定 5ms (200Hz) と仮定。
+var hiresBuf       = [];      // 受信中バッファ (新規セッションごとにクリア)
+var hiresLastSeq   = -1;      // 直近受信した seq (重複検出用)
+var hiresReceiving = false;   // 受信中フラグ
+var hiresFs        = 200;     // サンプリング周波数 [Hz]
+var hiresStartTs   = 0;       // 走行開始時刻 (performance.now ベース。CSV t_ms の起点)
+
+// バルク受信の状態を表示
+function setHiresStatus(text, color) {
+  var el = document.getElementById('hiresStatus');
+  if (el) {
+    el.textContent = text || '';
+    el.style.color = color || '';
+  }
+}
+
+// バルクnotifyハンドラ
+//   パケット構造:
+//     [0..1] seqNum (uint16, 0始まり、終端は 0xFFFF)
+//     [2]    count
+//     [3..]  gz_x10 (int16) × count
+function onBulkNotify(e) {
+  var dv = e.target.value;
+  if (dv.byteLength < 3) return;
+  var seq = dv.getUint16(0, true);
+  var count = dv.getUint8(2);
+
+  if (seq === 0xFFFF) {
+    // 終端マーカー
+    hiresReceiving = false;
+    var dur = hiresBuf.length / hiresFs;
+    setHiresStatus('✓ 高解像度ログ受信完了: ' + hiresBuf.length + ' サンプル ('
+      + dur.toFixed(2) + ' 秒)。CSVボタンで書き出せます',
+      '#66f0a8');
+    dbg('bulk dump 受信完了: ' + hiresBuf.length + ' samples');
+    return;
+  }
+
+  // 新しい受信セッションの開始判定: seq が 0 でかつ受信中でない or 巻き戻った
+  if (seq === 0 && (!hiresReceiving || hiresLastSeq > 5)) {
+    hiresBuf = [];
+    hiresLastSeq = -1;
+    hiresReceiving = true;
+    setHiresStatus('高解像度ログ受信中… (BLE経由のため数秒かかります)', '#ffa84a');
+  }
+
+  // パケットからサンプルを取り出して追加
+  if (dv.byteLength < 3 + count * 2) return;
+  for (var i = 0; i < count; i++) {
+    var v = dv.getInt16(3 + i * 2, true);
+    hiresBuf.push(v / 10.0);
+  }
+  hiresLastSeq = seq;
+  // 進捗表示 (50パケットごとに更新、UI 更新負荷を抑える)
+  if ((seq % 50) === 0) {
+    var dur2 = hiresBuf.length / hiresFs;
+    setHiresStatus('高解像度ログ受信中… ' + hiresBuf.length + ' サンプル ('
+      + dur2.toFixed(1) + ' 秒ぶん) を受信',
+      '#ffa84a');
+  }
+}
+
+// ----- ビュー(表示ウィンドウ)状態 -----
+// gyroAutoScroll = true  : LIVEモード(常に最新8秒を表示)
+// gyroAutoScroll = false : PAUSEDモード(viewEndT を固定、スクロールで移動可)
+// viewEndT は表示ウィンドウの右端の時刻(performance.now のタイムスタンプ)
+var gyroAutoScroll = true;
+var gyroViewEndT   = 0;
+
+// 最新サンプルの時刻
+function gyroLatestT() {
+  return gyroBuf.length > 0 ? gyroBuf[gyroBuf.length - 1].t : performance.now();
+}
+// 最古サンプルの時刻
+function gyroOldestT() {
+  return gyroBuf.length > 0 ? gyroBuf[0].t : performance.now();
+}
+
+// 現在の表示ウィンドウ右端
+function gyroEffectiveViewEndT() {
+  if (gyroAutoScroll) return gyroLatestT();
+  return gyroViewEndT;
+}
+
+function onGyroNotify(e) {
+  var dv = e.target.value;
+  // 古いファーム互換: 8バイトでも受け付ける (peakは0扱い)
+  if (dv.byteLength < 8) return;
+
+  var gz_x10  = dv.getInt16(0, true);
+  var accum   = dv.getInt16(2, true);
+  var amp_x10 = dv.getUint16(4, true);
+  var zc      = dv.getUint8(6);
+  var cand    = dv.getUint8(7);
+  // 新ファーム (10バイト): byte 8-9 = |累積|のピーク値 (符号付き)
+  var peak    = (dv.byteLength >= 10) ? dv.getInt16(8, true) : 0;
+
+  var now = performance.now();
+  if (gyroBuf.length === 0) gyroFirstMs = now;
+
+  gyroBuf.push({
+    t: now,
+    gz: gz_x10 / 10.0,
+    accum: accum,
+    peak: peak,
+    amp: amp_x10 / 10.0,
+    zc: zc,
+    cand: cand
+  });
+  // 上限を超えたら古いものをまとめて削除(shift連発のオーバーヘッド回避)
+  if (gyroBuf.length > GYRO_BUF_LEN) {
+    var excess = gyroBuf.length - GYRO_BUF_LEN;
+    gyroBuf.splice(0, excess);
+  }
+
+  // 古いマーカー(バッファから完全に外れた)を捨てる
+  if (gyroBuf.length > 0) {
+    var oldest = gyroBuf[0].t;
+    while (gyroMarkers.length > 0 && gyroMarkers[0].t < oldest) gyroMarkers.shift();
+  }
+
+  updateGyroStats(gz_x10 / 10.0, accum, amp_x10 / 10.0, zc, cand, peak);
+
+  // 自動追従中はスライダーを右端に揃える
+  if (gyroAutoScroll) {
+    var slider = document.getElementById('gyroScrollbar');
+    if (slider) slider.value = 1000;
+  }
+
+  // requestAnimationFrame で間引き描画 (60Hz 上限)
+  if (!gyroRafPending) {
+    gyroRafPending = true;
+    requestAnimationFrame(function() {
+      gyroRafPending = false;
+      drawGyroChart();
+    });
+  }
+}
+
+function updateGyroStats(gz, accum, amp, zc, cand, peak) {
+  var elGz = document.getElementById('gyroStatGz');
+  var elAc = document.getElementById('gyroStatAccum');
+  var elAm = document.getElementById('gyroStatAmp');
+  var elZc = document.getElementById('gyroStatZc');
+  var elCa = document.getElementById('gyroStatCand');
+  if (elGz) elGz.textContent = (gz >= 0 ? '+' : '') + gz.toFixed(0);
+  if (elAc) {
+    var p = (typeof peak === 'number') ? peak : 0;
+    // 現在の累積角度 / ピーク値の併記。実機チューニングで peak は 180°判定の決め手
+    var nowStr = (accum >= 0 ? '+' : '') + accum;
+    var peakStr = (p >= 0 ? '+' : '') + p;
+    elAc.textContent = nowStr + ' / ' + peakStr;
+  }
+  if (elAm) elAm.textContent = amp.toFixed(0);
+  if (elZc) elZc.textContent = zc;
+  if (elCa) {
+    var seg = SEG_BY_ID[cand];
+    elCa.textContent = seg ? seg.label : (cand === 0 ? '--' : ('id=' + cand));
+  }
+}
+
+// セグメント確定通知を受け取った時にマーカーを打つ
+function pushGyroMarker(segId) {
+  if (gyroBuf.length === 0) return;
+  gyroMarkers.push({ t: performance.now(), segId: segId });
+  // 5分ぶんのバッファに合わせて、マーカーも余裕をもって保持
+  if (gyroMarkers.length > 1000) gyroMarkers.shift();
+}
+
+function clearGyroBuffer() {
+  gyroBuf = [];
+  gyroMarkers = [];
+  gyroFirstMs = 0;
+  // クリア時はLIVEに戻す
+  setGyroAutoScroll(true);
+  var slider = document.getElementById('gyroScrollbar');
+  if (slider) slider.value = 1000;
+  drawGyroChart();
+  updateGyroStats(0, 0, 0, 0, 0, 0);
+}
+
+// ----- ビュー(LIVE / PAUSED)制御 -----
+function setGyroAutoScroll(on) {
+  gyroAutoScroll = on;
+  if (on) {
+    gyroViewEndT = gyroLatestT();
+  }
+  var btn = document.getElementById('btnGyroLive');
+  var lbl = document.getElementById('gyroLiveLabel');
+  if (btn) {
+    btn.classList.toggle('live',   on);
+    btn.classList.toggle('paused', !on);
+  }
+  if (lbl) lbl.textContent = on ? 'LIVE' : 'PAUSED';
+  var cv = document.getElementById('gyroCanvas');
+  if (cv) cv.classList.toggle('live', on);
+  drawGyroChart();
+}
+
+// スライダー位置 (0-1000) を実時刻 viewEndT に変換
+//   slider=1000 → 最新サンプル時刻 (LIVE と同じ位置)
+//   slider=0    → 最古から GYRO_VIEW_MS だけ進んだ位置 (= 最古ウィンドウの右端)
+function gyroSliderToViewEndT(sliderVal) {
+  if (gyroBuf.length === 0) return performance.now();
+  var oldest = gyroOldestT();
+  var latest = gyroLatestT();
+  // 表示可能な viewEndT の範囲: [oldest + viewMs, latest]
+  var minEnd = oldest + GYRO_VIEW_MS;
+  var maxEnd = latest;
+  if (minEnd > maxEnd) minEnd = maxEnd;  // バッファが viewMs 未満の場合
+  var ratio = sliderVal / 1000.0;
+  return minEnd + (maxEnd - minEnd) * ratio;
+}
+
+function gyroViewEndTToSlider() {
+  if (gyroBuf.length === 0) return 1000;
+  var oldest = gyroOldestT();
+  var latest = gyroLatestT();
+  var minEnd = oldest + GYRO_VIEW_MS;
+  var maxEnd = latest;
+  if (maxEnd <= minEnd) return 1000;
+  var v = (gyroEffectiveViewEndT() - minEnd) / (maxEnd - minEnd);
+  if (v < 0) v = 0;
+  if (v > 1) v = 1;
+  return Math.round(v * 1000);
+}
+
+function onGyroSliderInput(ev) {
+  var sliderVal = parseInt(ev.target.value, 10);
+  // ユーザーが操作した瞬間に PAUSED に切り替える(右端=1000のときも一旦PAUSEDに、
+  // ただし1000のときはLIVEに戻すのが直感的なので個別に判定)
+  if (sliderVal >= 999) {
+    // ほぼ右端 → LIVE復帰
+    setGyroAutoScroll(true);
+  } else {
+    gyroAutoScroll = false;
+    gyroViewEndT = gyroSliderToViewEndT(sliderVal);
+    var btn = document.getElementById('btnGyroLive');
+    var lbl = document.getElementById('gyroLiveLabel');
+    if (btn) { btn.classList.remove('live'); btn.classList.add('paused'); }
+    if (lbl) lbl.textContent = 'PAUSED';
+    var cv = document.getElementById('gyroCanvas');
+    if (cv) cv.classList.remove('live');
+    drawGyroChart();
+  }
+}
+
+function onGyroLiveBtnClick() {
+  // LIVE ⇄ PAUSED トグル
+  if (gyroAutoScroll) {
+    // PAUSEDに → 現在の viewEndT を最新で固定
+    gyroViewEndT = gyroLatestT();
+    setGyroAutoScroll(false);
+  } else {
+    setGyroAutoScroll(true);
+    var slider = document.getElementById('gyroScrollbar');
+    if (slider) slider.value = 1000;
+  }
+}
+
+// ----- CSV エクスポート -----
+// hiresBuf があれば優先して使用 (Arduino の 200Hz 生ログ)。
+// なければ従来の gyroBuf (リアルタイム notify、~50Hz、波などの瞬間現象は欠落) を出力。
+function exportGyroCSV() {
+  // 受信中なら確認
+  if (hiresReceiving) {
+    var ok = confirm('高解像度ログを受信中です (' + hiresBuf.length + ' サンプル受信済)。\n' +
+      'いま書き出すと不完全なデータになります。\n' +
+      '・OK : 不完全でもいま書き出す\n' +
+      '・キャンセル : 受信完了を待つ');
+    if (!ok) return;
+  }
+  var hasHires = (hiresBuf.length > 0);
+  if (hasHires) {
+    exportHiresCSV();
+  } else if (gyroBuf.length > 0) {
+    exportRealtimeCSV();
+  } else {
+    alert('ジャイロデータがまだ蓄積されていません');
+  }
+}
+
+// 高解像度CSV (Arduino側200Hzバッファから)
+function exportHiresCSV() {
+  var lines = [];
+  lines.push('# mini4ai ジャイロログ (高解像度 200Hz)');
+  lines.push('# 出力日時: ' + new Date().toISOString());
+  lines.push('# サンプリング: ' + hiresFs + ' Hz (Arduino側 raw バッファ)');
+  lines.push('# サンプル数: ' + hiresBuf.length + ' (= ' + (hiresBuf.length / hiresFs).toFixed(2) + ' 秒)');
+  lines.push('# 列: t_ms (走行開始からの相対 ms), gz_dps');
+
+  // セグメント確定マーカー (hires は走行開始からの絶対時刻ベース)
+  // gyroMarkers の t は performance.now で、 hiresStartTs を引いて相対化
+  var markerEvents = [];  // {t_ms, label}
+  for (var mi = 0; mi < gyroMarkers.length; mi++) {
+    var mk = gyroMarkers[mi];
+    if (hiresStartTs > 0) {
+      var rel = mk.t - hiresStartTs;
+      if (rel >= 0 && rel <= (hiresBuf.length / hiresFs) * 1000 + 500) {
+        var seg = SEG_BY_ID[mk.segId];
+        var lbl = seg ? (seg.key || seg.label || ('seg' + mk.segId)) : ('seg' + mk.segId);
+        markerEvents.push({ t_ms: rel, label: lbl });
+      }
+    }
+  }
+  // 時刻昇順
+  markerEvents.sort(function(a, b) { return a.t_ms - b.t_ms; });
+
+  // 各サンプルに最も近いマーカーを紐付け
+  var markerByIdx = {};
+  for (var mei = 0; mei < markerEvents.length; mei++) {
+    var ev = markerEvents[mei];
+    var idx = Math.round(ev.t_ms / 1000 * hiresFs);
+    if (idx < 0) idx = 0;
+    if (idx >= hiresBuf.length) idx = hiresBuf.length - 1;
+    markerByIdx[idx] = markerByIdx[idx] ? (markerByIdx[idx] + ';' + ev.label) : ev.label;
+  }
+
+  lines.push('t_ms,gz_dps,event');
+  var dt_ms = 1000.0 / hiresFs;
+  for (var i = 0; i < hiresBuf.length; i++) {
+    var t = (i * dt_ms).toFixed(1);
+    var ev2 = markerByIdx[i] || '';
+    lines.push(t + ',' + hiresBuf[i].toFixed(2) + ',' + ev2);
+  }
+
+  downloadCSV(lines, 'mini4ai_hires');
+}
+
+// リアルタイム notify CSV (従来通り)
+function exportRealtimeCSV() {
+  // セグメント確定マーカーを「サンプル時刻ごと」に紐付け(イベント列として出力するため)
+  var markerByIdx = {};
+  for (var mi = 0; mi < gyroMarkers.length; mi++) {
+    var mk = gyroMarkers[mi];
+    var bestIdx = -1, bestDiff = Infinity;
+    for (var bi = 0; bi < gyroBuf.length; bi++) {
+      var d = Math.abs(gyroBuf[bi].t - mk.t);
+      if (d < bestDiff) { bestDiff = d; bestIdx = bi; }
+      if (gyroBuf[bi].t > mk.t + 50) break;
+    }
+    if (bestIdx >= 0) {
+      var seg = SEG_BY_ID[mk.segId];
+      var label = seg ? (seg.key || seg.label || ('seg' + mk.segId)) : ('seg' + mk.segId);
+      markerByIdx[bestIdx] = markerByIdx[bestIdx] ? (markerByIdx[bestIdx] + ';' + label) : label;
+    }
+  }
+
+  var lines = [];
+  lines.push('# mini4ai ジャイロログ (リアルタイム notify、低解像度)');
+  lines.push('# 出力日時: ' + new Date().toISOString());
+  lines.push('# 注意: BLE notify 経由のため実効サンプリングレートは ~12-50Hz');
+  lines.push('#       高解像度 200Hz ログは走行終了時に Arduino から自動転送されます');
+  lines.push('# 列: t_ms, gz_dps, accum_deg, peak_deg, max_amp_dps, zero_cross, candidate_id, candidate_label, event');
+  var t0 = gyroBuf[0].t;
+  lines.push('t_ms,gz_dps,accum_deg,peak_deg,max_amp_dps,zero_cross,candidate_id,candidate_label,event');
+  for (var i = 0; i < gyroBuf.length; i++) {
+    var s = gyroBuf[i];
+    var seg = SEG_BY_ID[s.cand];
+    var candLabel = seg ? (seg.key || seg.label || '') : '';
+    var ev = markerByIdx[i] || '';
+    lines.push(
+      ((s.t - t0).toFixed(0)) + ',' +
+      s.gz.toFixed(2) + ',' +
+      s.accum + ',' +
+      (typeof s.peak === 'number' ? s.peak : 0) + ',' +
+      s.amp.toFixed(2) + ',' +
+      s.zc + ',' +
+      s.cand + ',' +
+      candLabel + ',' +
+      ev
+    );
+  }
+  downloadCSV(lines, 'mini4ai_gyro');
+}
+
+// CSV ダウンロード共通処理
+function downloadCSV(lines, prefix) {
+  var csv = lines.join('\n') + '\n';
+  var blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var ts = new Date();
+  var pad = function(n){ return (n<10?'0':'')+n; };
+  var fname = prefix + '_' +
+    ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate()) + '_' +
+    pad(ts.getHours()) + pad(ts.getMinutes()) + pad(ts.getSeconds()) + '.csv';
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 200);
+}
+
+// ----- キャンバスのマウスドラッグでスクロール -----
+var gyroDragState = null;  // { startX, startViewEndT }
+function attachGyroDragHandlers() {
+  var cv = document.getElementById('gyroCanvas');
+  if (!cv || cv._gyroDragAttached) return;
+  cv._gyroDragAttached = true;
+
+  function px2ms(deltaPx) {
+    var W = cv.clientWidth || 600;
+    var padL = 38, padR = 38;
+    var plotW = W - padL - padR;
+    if (plotW <= 0) return 0;
+    return (deltaPx / plotW) * GYRO_VIEW_MS;
+  }
+  cv.addEventListener('mousedown', function(ev){
+    if (gyroBuf.length < 2) return;
+    gyroDragState = {
+      startX: ev.clientX,
+      startViewEndT: gyroEffectiveViewEndT()
+    };
+    cv.classList.add('dragging');
+    ev.preventDefault();
+  });
+  window.addEventListener('mousemove', function(ev){
+    if (!gyroDragState) return;
+    var dx = ev.clientX - gyroDragState.startX;
+    // 右にドラッグ→過去へスクロール(viewEndT を減らす)
+    var deltaMs = px2ms(dx);
+    var newEnd = gyroDragState.startViewEndT - deltaMs;
+    var minEnd = gyroOldestT() + GYRO_VIEW_MS;
+    var maxEnd = gyroLatestT();
+    if (minEnd > maxEnd) minEnd = maxEnd;
+    if (newEnd < minEnd) newEnd = minEnd;
+    if (newEnd > maxEnd) newEnd = maxEnd;
+    gyroViewEndT = newEnd;
+
+    // LIVEから外れた状態にする(ただし maxEnd ピッタリならLIVE維持)
+    if (newEnd >= maxEnd - 1) {
+      if (!gyroAutoScroll) setGyroAutoScroll(true);
+    } else {
+      if (gyroAutoScroll) {
+        gyroAutoScroll = false;
+        var btn = document.getElementById('btnGyroLive');
+        var lbl = document.getElementById('gyroLiveLabel');
+        if (btn) { btn.classList.remove('live'); btn.classList.add('paused'); }
+        if (lbl) lbl.textContent = 'PAUSED';
+      }
+      var slider = document.getElementById('gyroScrollbar');
+      if (slider) slider.value = gyroViewEndTToSlider();
+    }
+    drawGyroChart();
+  });
+  window.addEventListener('mouseup', function(){
+    if (!gyroDragState) return;
+    gyroDragState = null;
+    cv.classList.remove('dragging');
+  });
+}
+
+function drawGyroChart() {
+  var cv = document.getElementById('gyroCanvas');
+  if (!cv) return;
+  // CSS サイズに合わせて内部解像度を DPR 補正
+  var dpr = window.devicePixelRatio || 1;
+  var cssW = cv.clientWidth || 600;
+  var cssH = cv.clientHeight || 220;
+  var pxW = Math.round(cssW * dpr);
+  var pxH = Math.round(cssH * dpr);
+  if (cv.width !== pxW || cv.height !== pxH) {
+    cv.width = pxW;
+    cv.height = pxH;
+  }
+  var ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  var W = cssW, H = cssH;
+  var padL = 38, padR = 38, padT = 8, padB = 18;
+  var plotW = W - padL - padR;
+  var plotH = H - padT - padB;
+  var midY = padT + plotH / 2;
+
+  // 背景グリッド
+  ctx.strokeStyle = 'rgba(120,160,255,0.10)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (var i = 0; i <= 4; i++) {
+    var y = padT + (plotH * i / 4);
+    ctx.moveTo(padL, y); ctx.lineTo(padL + plotW, y);
+  }
+  for (var j = 0; j <= 8; j++) {
+    var x = padL + (plotW * j / 8);
+    ctx.moveTo(x, padT); ctx.lineTo(x, padT + plotH);
+  }
+  ctx.stroke();
+
+  // 中心線 (0)
+  ctx.strokeStyle = 'rgba(180,200,255,0.30)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, midY); ctx.lineTo(padL + plotW, midY);
+  ctx.stroke();
+
+  // しきい値線
+  function gzToY(v) {
+    var clipped = Math.max(-GYRO_GZ_RANGE, Math.min(GYRO_GZ_RANGE, v));
+    return midY - (clipped / GYRO_GZ_RANGE) * (plotH / 2);
+  }
+  function accumToY(v) {
+    var clipped = Math.max(-GYRO_ACCUM_RANGE, Math.min(GYRO_ACCUM_RANGE, v));
+    return midY - (clipped / GYRO_ACCUM_RANGE) * (plotH / 2);
+  }
+
+  // ±100 dps (カーブ判定下限) [シアン点線]
+  ctx.strokeStyle = 'rgba(76,201,255,0.35)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padL, gzToY(100));   ctx.lineTo(padL + plotW, gzToY(100));
+  ctx.moveTo(padL, gzToY(-100));  ctx.lineTo(padL + plotW, gzToY(-100));
+  ctx.stroke();
+
+  // ±50 deg (90°判定下限) [アンバー点線]
+  ctx.strokeStyle = 'rgba(255,194,74,0.35)';
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padL, accumToY(50));   ctx.lineTo(padL + plotW, accumToY(50));
+  ctx.moveTo(padL, accumToY(-50));  ctx.lineTo(padL + plotW, accumToY(-50));
+  ctx.stroke();
+
+  // ±110 deg (180°判定下限) [ピンク点線]
+  ctx.strokeStyle = 'rgba(255,93,209,0.45)';
+  ctx.setLineDash([6, 3]);
+  ctx.beginPath();
+  ctx.moveTo(padL, accumToY(110));   ctx.lineTo(padL + plotW, accumToY(110));
+  ctx.moveTo(padL, accumToY(-110));  ctx.lineTo(padL + plotW, accumToY(-110));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 軸ラベル
+  ctx.fillStyle = 'rgba(166,179,216,0.85)';
+  ctx.font = '10px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('+' + GYRO_GZ_RANGE, padL - 4, padT + 9);
+  ctx.fillText('0',                 padL - 4, midY + 3);
+  ctx.fillText('-' + GYRO_GZ_RANGE, padL - 4, padT + plotH);
+  ctx.fillText('dps',               padL - 4, padT + plotH + 12);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255,194,74,0.85)';
+  ctx.fillText('+' + GYRO_ACCUM_RANGE, padL + plotW + 4, padT + 9);
+  ctx.fillText('0',                    padL + plotW + 4, midY + 3);
+  ctx.fillText('-' + GYRO_ACCUM_RANGE, padL + plotW + 4, padT + plotH);
+  ctx.fillText('deg',                  padL + plotW + 4, padT + plotH + 12);
+
+  if (gyroBuf.length < 2) {
+    updateGyroWindowInfo(null, null);
+    return;
+  }
+
+  // ----- 時間軸: 表示ウィンドウを viewEndT 基準で算出 -----
+  var tMax = gyroEffectiveViewEndT();
+  var tMin = tMax - GYRO_VIEW_MS;
+  function tToX(t) {
+    var p = (t - tMin) / GYRO_VIEW_MS;
+    if (p < 0) p = 0;
+    if (p > 1) p = 1;
+    return padL + p * plotW;
+  }
+
+  // 表示範囲のサンプルだけ描画(バッファが長くても軽量)
+  // 二分探索で tMin 以上の最初のインデックスを見つける
+  function lowerBoundT(arr, target) {
+    var lo = 0, hi = arr.length;
+    while (lo < hi) {
+      var mid = (lo + hi) >>> 1;
+      if (arr[mid].t < target) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+  }
+  // tMin の少し前から、tMax の少し後まで(画面端を綺麗に繋ぐ)
+  var iStart = lowerBoundT(gyroBuf, tMin);
+  if (iStart > 0) iStart--;
+  var iEnd = lowerBoundT(gyroBuf, tMax);
+  if (iEnd < gyroBuf.length) iEnd++;
+  if (iEnd > gyroBuf.length) iEnd = gyroBuf.length;
+  if (iEnd - iStart < 2) {
+    updateGyroWindowInfo(tMin, tMax);
+    return;
+  }
+
+  // 累積角度 (背景の塗りつぶし、アンバー)
+  ctx.fillStyle = 'rgba(255,194,74,0.10)';
+  ctx.beginPath();
+  ctx.moveTo(tToX(gyroBuf[iStart].t), midY);
+  for (var k = iStart; k < iEnd; k++) {
+    ctx.lineTo(tToX(gyroBuf[k].t), accumToY(gyroBuf[k].accum));
+  }
+  ctx.lineTo(tToX(gyroBuf[iEnd - 1].t), midY);
+  ctx.closePath();
+  ctx.fill();
+
+  // 累積角度 折れ線 (アンバー)
+  ctx.strokeStyle = 'rgba(255,194,74,0.95)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (var m = iStart; m < iEnd; m++) {
+    var xa = tToX(gyroBuf[m].t);
+    var ya = accumToY(gyroBuf[m].accum);
+    if (m === iStart) ctx.moveTo(xa, ya);
+    else ctx.lineTo(xa, ya);
+  }
+  ctx.stroke();
+
+  // ピーク累積 折れ線 (薄い赤橙、点線)
+  ctx.strokeStyle = 'rgba(255,110,110,0.75)';
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  for (var mp = iStart; mp < iEnd; mp++) {
+    var xp = tToX(gyroBuf[mp].t);
+    var pkVal = (typeof gyroBuf[mp].peak === 'number') ? gyroBuf[mp].peak : 0;
+    var yp = accumToY(pkVal);
+    if (mp === iStart) ctx.moveTo(xp, yp);
+    else ctx.lineTo(xp, yp);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // gz 折れ線 (シアン)
+  ctx.strokeStyle = 'rgba(76,201,255,0.95)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  for (var n = iStart; n < iEnd; n++) {
+    var xb = tToX(gyroBuf[n].t);
+    var yb = gzToY(gyroBuf[n].gz);
+    if (n === iStart) ctx.moveTo(xb, yb);
+    else ctx.lineTo(xb, yb);
+  }
+  ctx.stroke();
+
+  // セグメント確定マーカー (色付き縦線)
+  for (var pp = 0; pp < gyroMarkers.length; pp++) {
+    var mk = gyroMarkers[pp];
+    if (mk.t < tMin || mk.t > tMax) continue;
+    var mx = tToX(mk.t);
+    var seg = SEG_BY_ID[mk.segId];
+    var segColor = 'rgba(255,93,209,0.85)';
+    if (mk.segId === 1) segColor = 'rgba(255,215,106,0.95)';     // 直線 イエロー
+    else if (mk.segId === 2 || mk.segId === 3) segColor = 'rgba(255,126,179,0.95)';  // 右
+    else if (mk.segId === 4 || mk.segId === 5) segColor = 'rgba(108,242,196,0.95)';  // 左
+    else if (mk.segId === 6) segColor = 'rgba(76,201,255,0.95)';  // ウェーブ
+    ctx.strokeStyle = segColor;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(mx, padT);
+    ctx.lineTo(mx, padT + plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (seg) {
+      ctx.fillStyle = segColor;
+      ctx.font = 'bold 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(seg.label, mx + 2, padT + 10);
+    }
+  }
+
+  // 「LIVE から外れています」のオーバレイ表示
+  if (!gyroAutoScroll) {
+    ctx.fillStyle = 'rgba(255,168,74,0.85)';
+    ctx.font = 'bold 11px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('▶ PAUSED', padL + plotW - 6, padT + 14);
+  }
+
+  updateGyroWindowInfo(tMin, tMax);
+}
+
+function updateGyroWindowInfo(tMin, tMax) {
+  var el = document.getElementById('gyroWindowInfo');
+  if (!el) return;
+  if (tMin === null || gyroBuf.length === 0) { el.textContent = '--'; return; }
+  var latest = gyroLatestT();
+  // 最新サンプルからの相対秒で表示
+  var relMin = (tMin - latest) / 1000.0;
+  var relMax = (tMax - latest) / 1000.0;
+  var fmt = function(s) {
+    var sign = s < 0 ? '-' : '+';
+    return sign + Math.abs(s).toFixed(1) + 's';
+  };
+  el.textContent = fmt(relMin) + ' \u2192 ' + fmt(relMax);
+}
+
+// ============================================================
+// 認識履歴
+// ============================================================
 var detectionHistory = []; // 検出されたセグメントID履歴
 
 function addToHistory(segId) {
@@ -3072,6 +4080,43 @@ function setupEvents() {
   document.getElementById('btnTutorialSkip').onclick = endTutorial;
   document.getElementById('btnAddAction').onclick = addAction;
   document.getElementById('btnClearHistory').onclick = clearHistory;
+  var btnGc = document.getElementById('btnGyroClear');
+  if (btnGc) btnGc.onclick = clearGyroBuffer;
+  var btnGl = document.getElementById('btnGyroLive');
+  if (btnGl) btnGl.onclick = onGyroLiveBtnClick;
+  var btnGcsv = document.getElementById('btnGyroCsv');
+  if (btnGcsv) btnGcsv.onclick = exportGyroCSV;
+  var btnGbulk = document.getElementById('btnGyroBulkReq');
+  if (btnGbulk) btnGbulk.onclick = function() {
+    if (!chars.bulk || !chars.command) {
+      alert('BLE接続されていないか、ファームが古いです');
+      return;
+    }
+    // commandChar に 5 (CMD_BULK_REQUEST) を書き込み
+    sendCommand(5);
+    setHiresStatus('高解像度ログ再要求を送信しました…', '#7ad7ff');
+  };
+  var slider = document.getElementById('gyroScrollbar');
+  if (slider) slider.addEventListener('input', onGyroSliderInput);
+  // キャンバスのドラッグでスクロール
+  attachGyroDragHandlers();
+  // 初期表示
+  setGyroAutoScroll(true);
+
+  // ジャイログラフのリサイズ追従 + 初回描画
+  window.addEventListener('resize', function() {
+    drawGyroChart();
+  });
+  // タブ切り替え時にもグラフを再描画 (Canvas の clientWidth が
+  // display:none → block 復帰直後で 0 だったケースを救済)
+  var tabs = document.querySelectorAll('.tab');
+  for (var ti = 0; ti < tabs.length; ti++) {
+    var orig = tabs[ti].onclick;
+    tabs[ti].addEventListener('click', function() {
+      setTimeout(drawGyroChart, 50);
+    });
+  }
+  drawGyroChart();
 }
 
 // ============================================================
