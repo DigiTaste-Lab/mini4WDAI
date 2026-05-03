@@ -1185,12 +1185,15 @@ hr.divider{
         const o=document.createElement('option');o.value=v;o.textContent=n;trigSel.appendChild(o);
       });
       trigSel.value=r.triggerMode;
+      const usesN=()=>r.triggerMode===TRIG.EVERY_N||r.triggerMode===TRIG.ONLY_N;
       trigSel.onchange=e=>{e.stopPropagation();r.triggerMode=Number(trigSel.value);renderRules();saveLocal()};
       trigSel.onclick=e=>e.stopPropagation();
       const nLab=document.createElement('label');nLab.textContent='N =';
       const nIn=document.createElement('input');nIn.type='number';nIn.min=1;nIn.max=255;nIn.value=r.triggerN||1;
       nIn.onchange=e=>{e.stopPropagation();r.triggerN=clamp(Number(nIn.value),1,255);saveLocal()};
       nIn.onclick=e=>e.stopPropagation();
+      // Nが意味を持つのは "N回毎" と "N回目のみ" だけ。他では非表示にする。
+      if(!usesN()){nLab.style.display='none';nIn.style.display='none';}
       const loopLab=document.createElement('label');loopLab.className='checkbox';
       const chk=document.createElement('input');chk.type='checkbox';chk.checked=r.loopMode;
       chk.onchange=e=>{e.stopPropagation();r.loopMode=chk.checked;saveLocal()};

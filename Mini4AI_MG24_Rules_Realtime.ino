@@ -1,6 +1,6 @@
 // ============================================================
 // Mini4AI MG24 Rules Realtime Firmware
-// v3.7: action lockout (ACTION_LOCK) for global motor-action suppression
+// v3.8: per-rule independent timing for curveLong / peakAfter / straightHold
 // XIAO MG24 Sense + LSM6DS3 + BLE
 //
 // Production policy:
@@ -181,13 +181,13 @@ struct Rule {
   uint16_t peakAfterOverrideMs;
   uint16_t straightHoldOverrideMs;
   uint16_t curveLongOverrideMs;
-  // Pending-fire state. When the final pattern segment requires more time than
-  // the global emit threshold (override > global), the rule waits here until
-  // its own threshold is satisfied, then fires.
-  bool     pending;
-  uint32_t pendingFireDueMs;   // absolute millis() when pending becomes ready
-  float    pendingGz;          // gz captured at pending start, used for action log
-  uint8_t  pendingSeg;         // segment that triggered the pending state
+  // v38: Per-rule segment emission flags. Reset at curve/straight start.
+  // Each rule independently tracks whether its own override-time threshold
+  // has fired for the current curve/straight. Rules without an override
+  // (0xFFFF) are driven by the global firing instead — see global flags.
+  bool perRuleCurveHoldEmitted;
+  bool perRulePeakEmitted;
+  bool perRuleStraightHoldEmitted;
 };
 
 static Rule rules[MAX_RULES];
@@ -502,11 +502,11 @@ static bool isAuxSegment(uint8_t seg) {
 
 // ---- v37 per-rule override helpers ----
 //
-// Compute the *effective* emit threshold for a given segment kind, taking the
-// minimum of the global value and any per-rule override that targets this kind
-// of segment. This way, if any rule wants to fire earlier than the global, the
-// firmware emits earlier; rules that want to fire LATER use the pending state
-// (handled in advanceRuleWithSegment + updatePendingFires).
+// v38: Per-rule emission timings are tracked independently per rule.
+// Global firing uses the configured global parameters and reaches rules whose
+// override is 0xFFFF (inherit). Rules with explicit overrides receive their
+// own per-rule firings calculated from cornerStartMs / cornerPeakMs /
+// straightHoldStartMs at the per-rule override interval.
 static bool segWantsPeakAfter(uint8_t seg) {
   return seg == SEG_LEFT_PEAK || seg == SEG_RIGHT_PEAK;
 }
@@ -519,63 +519,12 @@ static bool segWantsCurveLong(uint8_t seg) {
 
 // Smallest override value among rules whose pattern contains 'seg'. Returns
 // 0xFFFF if no rule has an override for this segment kind.
-static uint16_t minOverrideFor(uint8_t seg) {
-  uint16_t best = 0xFFFF;
-  for (uint8_t i = 0; i < rulesCount; i++) {
-    const Rule &r = rules[i];
-    if (!r.enabled || r.patternLen == 0) continue;
-    bool hasSeg = false;
-    for (uint8_t k = 0; k < r.patternLen; k++) if (r.pattern[k] == seg) { hasSeg = true; break; }
-    if (!hasSeg) continue;
-    uint16_t v = 0xFFFF;
-    if (segWantsPeakAfter(seg))           v = r.peakAfterOverrideMs;
-    else if (segWantsStraightHold(seg))   v = r.straightHoldOverrideMs;
-    else if (segWantsCurveLong(seg))      v = r.curveLongOverrideMs;
-    if (v != 0xFFFF && v < best) best = v;
-  }
-  return best;
-}
-
-static uint16_t effectivePeakAfterMs() {
-  uint16_t override_min = 0xFFFF;
-  uint16_t a = minOverrideFor(SEG_LEFT_PEAK);       if (a < override_min) override_min = a;
-  uint16_t b = minOverrideFor(SEG_RIGHT_PEAK);      if (b < override_min) override_min = b;
-  uint32_t g = CURVE_PEAK_AFTER_MS;
-  return (uint16_t)((override_min < g) ? override_min : g);
-}
-static uint16_t effectiveStraightHoldMs() {
-  uint16_t o = minOverrideFor(SEG_STRAIGHT_HOLD);
-  uint32_t g = STRAIGHT_HOLD_MS;
-  return (uint16_t)((o < g) ? o : g);
-}
-static uint16_t effectiveCurveLongMs() {
-  uint16_t override_min = 0xFFFF;
-  uint16_t a = minOverrideFor(SEG_LEFT_HOLD);       if (a < override_min) override_min = a;
-  uint16_t b = minOverrideFor(SEG_RIGHT_HOLD);      if (b < override_min) override_min = b;
-  uint32_t g = CURVE_LONG_MS;
-  return (uint16_t)((override_min < g) ? override_min : g);
-}
-
-// True if the rule's own override (if any) for this segment kind has been
-// satisfied by the elapsed time since the relevant detection start.
-static bool ruleOverrideSatisfied(const Rule &r, uint8_t seg, uint32_t now) {
-  uint16_t ov = 0xFFFF;
-  uint32_t startMs = 0;
-  if (segWantsPeakAfter(seg)) {
-    ov = r.peakAfterOverrideMs;
-    startMs = cornerPeakMs;
-  } else if (segWantsStraightHold(seg)) {
-    ov = r.straightHoldOverrideMs;
-    startMs = straightHoldStartMs ? straightHoldStartMs : now;
-  } else if (segWantsCurveLong(seg)) {
-    ov = r.curveLongOverrideMs;
-    startMs = cornerStartMs;
-  } else {
-    return true;  // not a timed segment
-  }
-  if (ov == 0xFFFF) return true;  // no override, accept emit immediately
-  return (uint32_t)(now - startMs) >= (uint32_t)ov;
-}
+// v38: Global emission timings always use the configured global values.
+// Per-rule overrides are handled independently via per-rule timers in
+// updateSegmentDetection(), no longer through min-of-overrides aggregation.
+static uint16_t effectivePeakAfterMs() { return (uint16_t)CURVE_PEAK_AFTER_MS; }
+static uint16_t effectiveStraightHoldMs() { return (uint16_t)STRAIGHT_HOLD_MS; }
+static uint16_t effectiveCurveLongMs() { return (uint16_t)CURVE_LONG_MS; }
 
 static bool ruleTriggerAllowsFire(Rule &r) {
   r.matchCount++;
@@ -606,21 +555,9 @@ static void advanceRuleWithSegment(Rule &r, uint8_t seg, uint8_t ruleIdx, float 
     r.matchIdx++;
     if (r.matchIdx >= r.patternLen) {
       r.matchIdx = 0;
-      // v37: per-rule override timing. If the rule's own threshold is not yet
-      // satisfied, defer to pending state and let updatePendingFires() retry.
-      if (!ruleOverrideSatisfied(r, seg, now)) {
-        uint16_t ov = 0xFFFF; uint32_t startMs = now;
-        if (segWantsPeakAfter(seg))         { ov = r.peakAfterOverrideMs;    startMs = cornerPeakMs; }
-        else if (segWantsStraightHold(seg)) { ov = r.straightHoldOverrideMs; startMs = straightHoldStartMs ? straightHoldStartMs : now; }
-        else if (segWantsCurveLong(seg))    { ov = r.curveLongOverrideMs;    startMs = cornerStartMs; }
-        if (ov != 0xFFFF) {
-          r.pending = true;
-          r.pendingFireDueMs = startMs + (uint32_t)ov;
-          r.pendingGz = gz;
-          r.pendingSeg = seg;
-          return;
-        }
-      }
+      // v38: per-rule timing is handled in updateSegmentDetection() via per-rule
+      // emission flags & timers. By the time the segment reaches advanceRule,
+      // the rule's own threshold has already been satisfied — fire immediately.
       if (ruleTriggerAllowsFire(r)) {
         startActionsFromRule(ruleIdx, gz, now);
         if (!r.loopMode) r.enabled = false;
@@ -640,29 +577,14 @@ static void advanceRuleWithSegment(Rule &r, uint8_t seg, uint8_t ruleIdx, float 
   r.matchIdx = segmentMatches(r.pattern[0], seg) ? 1 : 0;
 }
 
-// Process rules that completed their pattern but were waiting for their own
-// per-rule timing override to be satisfied.
-static void updatePendingFires(uint32_t now) {
-  for (uint8_t i = 0; i < rulesCount; i++) {
-    Rule &r = rules[i];
-    if (!r.pending) continue;
-    if ((int32_t)(now - r.pendingFireDueMs) < 0) continue;
-    r.pending = false;
-    if (ruleTriggerAllowsFire(r)) {
-      startActionsFromRule(i, r.pendingGz, now);
-      if (!r.loopMode) r.enabled = false;
-    } else {
-      logEvent(r.pendingSeg, i, ACTION_NONE, r.pendingGz);
-    }
-  }
-}
-
 static void resetRuleProgress() {
   for (uint8_t i = 0; i < MAX_RULES; i++) {
     rules[i].matchIdx = 0;
     rules[i].matchCount = 0;
     rules[i].enabled = true;
-    rules[i].pending = false;
+    rules[i].perRuleCurveHoldEmitted = false;
+    rules[i].perRulePeakEmitted = false;
+    rules[i].perRuleStraightHoldEmitted = false;
   }
   activeRuleIdx = 0xFF;
   activePriority = 0;
@@ -761,24 +683,34 @@ static void updateActionEngine(uint32_t now) {
   }
 }
 
+// Logs the segment event and (optionally) updates live debug. Used by both
+// global broadcast and per-rule targeted dispatch.
+static void emitSegmentLog(uint8_t seg, uint8_t ruleIdx, float gz, uint32_t now) {
+  lastSegment = seg;
+  logEvent(seg, ruleIdx, ACTION_NONE, gz);
+  if (DEBUG_LIVE_SEG) {
+    pendingLiveSegValue = seg;
+    pendingLiveSeg = true;
+  }
+}
+
+// Dispatch a segment event to all rules in priority order (the "global" path,
+// for rules whose override for this segment kind is 0xFFFF=inherit).
+// SEGMENT_COOLDOWN_MS guards repeated emits of the same segment ID.
 static void onSegmentDetected(uint8_t seg, float gz, uint32_t now) {
   if (seg < 16 && lastSegEventMs[seg] != 0 && (uint32_t)(now - lastSegEventMs[seg]) < SEGMENT_COOLDOWN_MS) {
     return;
   }
   if (seg < 16) lastSegEventMs[seg] = now;
 
-  lastSegment = seg;
-  logEvent(seg, 0xFF, ACTION_NONE, gz);
-
-  if (DEBUG_LIVE_SEG) {
-    pendingLiveSegValue = seg;
-    pendingLiveSeg = true;
-  }
+  emitSegmentLog(seg, 0xFF, gz, now);
 
   // Evaluate rules by explicit priority, not by visual list order alone.
   // This prevents a broad low-priority rule from consuming a segment before
   // a narrow high-priority safety rule can fire. Same priority falls back to
   // the list order: earlier rule wins.
+  // v38: skip rules that have a per-rule override for this segment kind —
+  // those receive their own targeted events from the per-rule timers.
   bool used[MAX_RULES] = {false};
   for (uint8_t pass = 0; pass < rulesCount; pass++) {
     int best = -1;
@@ -793,8 +725,25 @@ static void onSegmentDetected(uint8_t seg, float gz, uint32_t now) {
     }
     if (best < 0) break;
     used[best] = true;
-    advanceRuleWithSegment(rules[best], seg, (uint8_t)best, gz, now);
+    Rule &r = rules[best];
+    // Skip rules that own a per-rule override for this segment kind:
+    // they get a separate targeted dispatch via onSegmentDetectedForRule.
+    if (segWantsPeakAfter(seg)        && r.peakAfterOverrideMs    != 0xFFFF) continue;
+    if (segWantsStraightHold(seg)     && r.straightHoldOverrideMs != 0xFFFF) continue;
+    if (segWantsCurveLong(seg)        && r.curveLongOverrideMs    != 0xFFFF) continue;
+    advanceRuleWithSegment(r, seg, (uint8_t)best, gz, now);
   }
+}
+
+// v38: Targeted segment dispatch for a single rule.
+// Used by per-rule timers when a rule's own override interval has been reached.
+// Logs the event with the rule index so traces clearly show which rule received
+// it, then advances only that rule's pattern matcher. No global cooldown — each
+// rule's own per-rule emitted-flag prevents re-fire within the same curve.
+static void onSegmentDetectedForRule(uint8_t ruleIdx, uint8_t seg, float gz, uint32_t now) {
+  if (ruleIdx >= rulesCount) return;
+  emitSegmentLog(seg, ruleIdx, gz, now);
+  advanceRuleWithSegment(rules[ruleIdx], seg, ruleIdx, gz, now);
 }
 
 // ============================================================
@@ -812,6 +761,12 @@ static void resetDetection(uint32_t now) {
   cornerPeakMs = now;
   cornerPeakEmitted = false;
   cornerHoldEmitted = false;
+  // v38: clear per-rule emission flags too.
+  for (uint8_t i = 0; i < MAX_RULES; i++) {
+    rules[i].perRuleCurveHoldEmitted = false;
+    rules[i].perRulePeakEmitted = false;
+    rules[i].perRuleStraightHoldEmitted = false;
+  }
   for (uint8_t i = 0; i < 16; i++) lastSegEventMs[i] = 0;
   lastPosSpikeMs = 0;
   lastNegSpikeMs = 0;
@@ -857,6 +812,12 @@ static void updateSegmentDetection(float gz, uint32_t now) {
     cornerPeakMs = now;
     cornerPeakEmitted = false;
     cornerHoldEmitted = false;
+    // v38: Reset per-rule emission flags so each new corner allows
+    // each rule's override timer to fire once for this corner.
+    for (uint8_t i = 0; i < rulesCount; i++) {
+      rules[i].perRuleCurveHoldEmitted = false;
+      rules[i].perRulePeakEmitted = false;
+    }
     uint8_t seg = (cornerSign > 0) ? SEG_LEFT : SEG_RIGHT;
     onSegmentDetected(seg, gz, now);
     return;
@@ -880,20 +841,48 @@ static void updateSegmentDetection(float gz, uint32_t now) {
     // (LEFT_HOLD/RIGHT_HOLD is now the sole long-curve discriminator; the
     //  former *_LONG_PEAK events were removed because PEAK already fires at
     //  curve exit and HOLD already filters by curve length.)
+    uint8_t holdSeg = (cornerSign > 0) ? SEG_LEFT_HOLD : SEG_RIGHT_HOLD;
     if (!cornerHoldEmitted && curveAgeMs >= effectiveCurveLongMs()) {
       cornerHoldEmitted = true;
-      uint8_t holdSeg = (cornerSign > 0) ? SEG_LEFT_HOLD : SEG_RIGHT_HOLD;
       onSegmentDetected(holdSeg, gz, now);
+    }
+    // v38: per-rule curve-hold timers. A rule with curveLongOverrideMs set
+    // gets its own targeted dispatch when its override interval is reached.
+    // The flag perRuleCurveHoldEmitted prevents re-fire within the same curve.
+    for (uint8_t i = 0; i < rulesCount; i++) {
+      Rule &r = rules[i];
+      if (!r.enabled || r.curveLongOverrideMs == 0xFFFF) continue;
+      if (r.perRuleCurveHoldEmitted) continue;
+      if (curveAgeMs >= (uint32_t)r.curveLongOverrideMs) {
+        r.perRuleCurveHoldEmitted = true;
+        onSegmentDetectedForRule(i, holdSeg, gz, now);
+      }
     }
 
     bool peakPassed = cornerPeakAbs >= CORNER_TH
                    && (uint32_t)(now - cornerPeakMs) >= effectivePeakAfterMs()
                    && (cornerPeakAbs - a) >= CURVE_PEAK_DROP_DPS;
 
+    uint8_t peakSeg = (cornerSign > 0) ? SEG_LEFT_PEAK : SEG_RIGHT_PEAK;
     if (!cornerPeakEmitted && peakPassed) {
       cornerPeakEmitted = true;
-      uint8_t peakSeg = (cornerSign > 0) ? SEG_LEFT_PEAK : SEG_RIGHT_PEAK;
       onSegmentDetected(peakSeg, gz, now);
+    }
+    // v38: per-rule peak-after timers. PEAK requires the corner to have peaked
+    // already (cornerPeakAbs >= CORNER_TH) AND a drop from peak — but the per-
+    // rule timer governs the "after how long since the peak" portion only.
+    // We still gate on the physical drop condition so an early override doesn't
+    // fire mid-corner before any real peak has occurred.
+    if (cornerPeakAbs >= CORNER_TH && (cornerPeakAbs - a) >= CURVE_PEAK_DROP_DPS) {
+      for (uint8_t i = 0; i < rulesCount; i++) {
+        Rule &r = rules[i];
+        if (!r.enabled || r.peakAfterOverrideMs == 0xFFFF) continue;
+        if (r.perRulePeakEmitted) continue;
+        if ((uint32_t)(now - cornerPeakMs) >= (uint32_t)r.peakAfterOverrideMs) {
+          r.perRulePeakEmitted = true;
+          onSegmentDetectedForRule(i, peakSeg, gz, now);
+        }
+      }
     }
 
     // Corner exit debounce only prevents duplicate curve-start events.
@@ -920,9 +909,23 @@ static void updateSegmentDetection(float gz, uint32_t now) {
       straightHoldEmitted = true;
       onSegmentDetected(SEG_STRAIGHT_HOLD, gz, now);
     }
+    // v38: per-rule straight-hold timers.
+    for (uint8_t i = 0; i < rulesCount; i++) {
+      Rule &r = rules[i];
+      if (!r.enabled || r.straightHoldOverrideMs == 0xFFFF) continue;
+      if (r.perRuleStraightHoldEmitted) continue;
+      if ((uint32_t)(now - straightHoldStartMs) >= (uint32_t)r.straightHoldOverrideMs) {
+        r.perRuleStraightHoldEmitted = true;
+        onSegmentDetectedForRule(i, SEG_STRAIGHT_HOLD, gz, now);
+      }
+    }
   } else {
     straightHoldStartMs = 0;
     straightHoldEmitted = false;
+    // Reset per-rule straight-hold flags when the straight ends.
+    for (uint8_t i = 0; i < rulesCount; i++) {
+      rules[i].perRuleStraightHoldEmitted = false;
+    }
   }
 }
 
@@ -1041,6 +1044,9 @@ static void onRulesWritten(BLEDevice central, BLECharacteristic characteristic) 
     rule.matchIdx = 0;
     rule.matchCount = 0;
     rule.enabled = true;
+    rule.perRuleCurveHoldEmitted = false;
+    rule.perRulePeakEmitted = false;
+    rule.perRuleStraightHoldEmitted = false;
   }
 
   resetRuleProgress();
@@ -1202,7 +1208,6 @@ void loop() {
         }
 
         updateSegmentDetection(gz, now);
-        updatePendingFires(now);
       }
     } else {
       motorBrake();

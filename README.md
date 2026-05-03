@@ -1,4 +1,4 @@
-# Mini4AI MG24 Rules Realtime — v3.7
+# Mini4AI MG24 Rules Realtime — v3.8
 
 XIAO MG24 Sense + LSM6DS3 IMU を使った、ジャイロベース・パターンマッチング型のミニ四駆 AI 制御システム。BLE 経由で Web UI からルールを書き込み、走行中はファーム単独で **セグメント検出 → ルール照合 → アクション発火** を行う。明示的なルールベースで動作する。
 
@@ -148,6 +148,25 @@ IMU: LSM6DS3 (XIAO Sense 内蔵)
 | `WAVE_WINDOW_MS` | 200 | ms | ウェーブ検出窓 |
 | `WAVE_LATCH_MS` | 1200 | ms | ウェーブラッチ時間 |
 | `WAVE_COOLDOWN_MS` | 400 | ms | ウェーブ再発火クールダウン |
+
+## v3.8 変更履歴
+
+### Per-rule タイミングの完全独立化
+
+`curveLongOverrideMs` `peakAfterOverrideMs` `straightHoldOverrideMs` の各オーバーライドを、ルール毎に **完全に独立** したタイマーで動作するようリファクタ。
+
+**従来 (v3.7 まで)**: グローバル発火時刻は「全ルール中の最小オーバーライド値」で決まる。例えば R1 が curveLongMs=100、R2 が curveLongMs=300 を指定すると、ファームのグローバル発火が 100ms に引きずられ、R2 への発火タイミングも影響を受ける挙動だった。
+
+**v3.8**: 各ルールが独自の per-rule タイマーを持ち、自分のオーバーライド時間が経過した瞬間に**そのルールにだけ**セグメント認識イベントを通知する。グローバル発火はオーバーライド未指定 (0xFFFF=継承) のルールにのみ届く。
+
+実装ポイント:
+- `Rule` 構造体に `perRuleCurveHoldEmitted` `perRulePeakEmitted` `perRuleStraightHoldEmitted` を追加
+- `onSegmentDetectedForRule()` を新設してルール単独へのディスパッチを可能に
+- pending 機構を撤去 (per-rule タイマーで完全に置き換え)
+- ログには **どのルール用の発火か** が ruleIdx 付きで記録される (Web UI で一目で確認可能)
+- アクション発火層は従来通り **プライオリティで調停**(同時発火時の挙動は変わらない)
+
+これにより「同じカーブに対して、ルールごとに異なるタイミングでイベントを受け取る」設計が可能になり、たとえば「速度別の早ブレーキ/遅ブレーキ」や「スタート時の手押さえ前提でのみ反応する長い直線継続(2000ms)」のような用途が安定して動く。
 
 ## v3.7 変更履歴
 
