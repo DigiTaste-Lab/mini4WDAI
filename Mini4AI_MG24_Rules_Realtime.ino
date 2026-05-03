@@ -4,7 +4,6 @@
 // XIAO MG24 Sense + LSM6DS3 + BLE
 //
 // Production policy:
-//   - No LDA
 //   - No realtime gyro/features notify
 //   - No Web-side decision making during run
 //   - 200 Hz local IMU -> rule -> PWM control
