@@ -1,6 +1,6 @@
 // ============================================================
 // Mini4AI MG24 Rules Realtime Firmware
-// v3.6: explicit rule priority + curve hold segments (LONG_PEAK removed), no LDA, BLE-free runtime control
+// v3.7: action lockout (ACTION_LOCK) for global motor-action suppression
 // XIAO MG24 Sense + LSM6DS3 + BLE
 //
 // Production policy:
@@ -65,6 +65,10 @@ static const uint8_t ACTION_BRAKE = 1;
 static const uint8_t ACTION_SPEED = 2;
 static const uint8_t ACTION_STOP  = 4;
 static const uint8_t ACTION_WAIT  = 5;
+// Global action lockout. While active, no new rule can preempt motor control;
+// existing motor duty is held. Useful for "ignore everything for N ms after
+// landing from a jump" or "skip any braking right after the start line".
+static const uint8_t ACTION_LOCK  = 6;
 
 // Rule trigger modes. The match counter is per rule and increments every time
 // the pattern is recognized, regardless of whether actions fire.
@@ -234,6 +238,11 @@ static uint8_t activeRuleIdx = 0xFF;
 static uint8_t activePriority = 0;
 static float activeTriggerGz = 0.0f;
 static uint8_t currentMotorDuty = 0;
+
+// Global action lockout: while now < actionLockUntilMs, no new rule can
+// trigger motor changes (BRAKE/SPEED/STOP). Segment detection and rule
+// matching continue normally; only the motor-side dispatch is suppressed.
+static uint32_t actionLockUntilMs = 0;
 
 // Optional low-rate live event notify queue
 static volatile bool pendingLiveSeg = false;
@@ -688,6 +697,13 @@ static void startNextAction(uint32_t now) {
       motorDuty(dutyFromStrength(a.strength));
     } else if (a.type == ACTION_WAIT) {
       motorDuty(NORMAL_DUTY);
+    } else if (a.type == ACTION_LOCK) {
+      // Hold the current motor output as-is. Only update the global lock
+      // window so that subsequent rule firings are suppressed for the same
+      // duration. The action itself is time-based like WAIT.
+      uint16_t lockDur = a.durationMs;
+      if (lockDur == 0) lockDur = 1;
+      actionLockUntilMs = now + lockDur;
     }
 
     uint16_t dur = a.durationMs;
@@ -710,6 +726,14 @@ static void startActionsFromRule(uint8_t ruleIdx, float gz, uint32_t now) {
   if (ruleIdx >= rulesCount) return;
   Rule &r = rules[ruleIdx];
   if (r.actionCount == 0) return;
+
+  // Global action lockout: while in the lock window, suppress new rule
+  // firings. We still allow rules whose *first* action is ACTION_LOCK,
+  // because the user explicitly intends to extend / re-arm the lockout
+  // from another segment context (e.g. re-lock after a jump landing).
+  if (!reached(now, actionLockUntilMs) && r.actions[0].type != ACTION_LOCK) {
+    return;
+  }
 
   uint8_t prio = priorityForRule(ruleIdx);
   // Higher priority can preempt lower-priority actions.
@@ -1051,6 +1075,7 @@ static void startRun(uint32_t now) {
   activeRuleIdx = 0xFF;
   activePriority = 0;
   activeTriggerGz = 0.0f;
+  actionLockUntilMs = 0;
 
   isRunning = true;
   setStatus(STATUS_RUNNING);
@@ -1063,6 +1088,7 @@ static void stopRun(uint8_t stopStatus) {
   activeActionCount = 0;
   activeActionIdx = 0;
   activeTriggerGz = 0.0f;
+  actionLockUntilMs = 0;
   motorBrake();
   setStatus(stopStatus);
   dumpStart();

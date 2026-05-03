@@ -610,6 +610,7 @@ input[type=number]{width:110px;font-family:"JetBrains Mono",monospace}
 .act-pill.act-speed{background:linear-gradient(135deg,#2ee6a8,#0fa86b);color:#042418;border-color:rgba(46,230,168,.7)}
 .act-pill.act-stop {background:linear-gradient(135deg,#ffc24a,#d18914);color:#2a1404;border-color:rgba(255,194,74,.7)}
 .act-pill.act-wait {background:linear-gradient(135deg,#9b6bff,#5a2ed6);color:#fff;border-color:rgba(155,107,255,.7)}
+.act-pill.act-lock {background:linear-gradient(135deg,#7f8aa9,#3a4259);color:#fff;border:1px dashed rgba(166,179,216,.85)}
 
 /* ===== ログテーブル ===== */
 .log{
@@ -868,6 +869,7 @@ hr.divider{
             <button class="btn success" id="btnAddRule">＋ ルール追加</button>
             <button class="btn btn-secondary" id="btnClearRules">全クリア</button>
             <span class="spacer"></span>
+            <button class="btn-hint" type="button" data-hint="priority" style="margin-right:6px">💡 優先度とブロックの仕組み</button>
             <button class="btn btn-secondary" id="btnExport">⇧ JSON保存</button>
             <button class="btn btn-secondary" id="btnImport">⇩ JSON読込</button>
             <button class="btn btn-secondary" id="btnQrShow">⌗ QR表示</button>
@@ -975,6 +977,7 @@ hr.divider{
       <button class="qr-tab-btn" type="button" data-help="left">左C類</button>
       <button class="qr-tab-btn" type="button" data-help="right">右C類</button>
       <button class="qr-tab-btn" type="button" data-help="straight">直線類</button>
+      <button class="qr-tab-btn" type="button" data-help="priority">優先度&ブロック</button>
     </div>
     <div id="helpModalBody"></div>
   </div>
@@ -1010,10 +1013,10 @@ hr.divider{
     rs.forEach(r=>{ if(Array.isArray(r.pattern)) r.pattern=r.pattern.map(s=>SEG_MIGRATE[s]||s); });
     return rs;
   }
-  const ACTION={NONE:0,BRAKE:1,SPEED:2,STOP:4,WAIT:5};
-  const ACTION_NAME={0:'NONE',1:'BRAKE',2:'SPEED',4:'STOP',5:'WAIT'};
-  const ACTION_LABEL={0:'なし',1:'ブレーキ',2:'速度調整',4:'停止',5:'待機'};
-  const ACTION_CLASS={0:'act-none',1:'act-brake',2:'act-speed',4:'act-stop',5:'act-wait'};
+  const ACTION={NONE:0,BRAKE:1,SPEED:2,STOP:4,WAIT:5,LOCK:6};
+  const ACTION_NAME={0:'NONE',1:'BRAKE',2:'SPEED',4:'STOP',5:'WAIT',6:'LOCK'};
+  const ACTION_LABEL={0:'なし',1:'ブレーキ',2:'速度調整',4:'停止',5:'待機',6:'アクション無効'};
+  const ACTION_CLASS={0:'act-none',1:'act-brake',2:'act-speed',4:'act-stop',5:'act-wait',6:'act-lock'};
   const STATUS_NAME={0:'IDLE',1:'READY',2:'RUNNING',3:'STOPPED',4:'ERROR'};
   const TRIG={EVERY:0,ODD:1,EVEN:2,EVERY_N:3,ONLY_N:4};
   const TRIG_NAME={0:'毎回',1:'奇数回',2:'偶数回',3:'N回毎',4:'N回目のみ'};
@@ -1100,7 +1103,7 @@ hr.divider{
     const a=rule.actions[idx];
     const row=document.createElement('div');row.className='action-row';
     const sel=document.createElement('select');
-    [[5,'待機'],[1,'ブレーキ'],[2,'速度調整'],[4,'停止']].forEach(([v,n])=>{
+    [[5,'待機'],[1,'ブレーキ'],[2,'速度調整'],[4,'停止'],[6,'アクション無効']].forEach(([v,n])=>{
       const o=document.createElement('option');o.value=v;o.textContent=n;sel.appendChild(o);
     });
     sel.value=a.type;
@@ -1765,11 +1768,54 @@ hr.divider{
       <text class="note" x="16" y="290">ウェーブ はカーブ系と独立。検出後は短いクールダウンあり</text>
     </svg>`;
 
-    const SVGS = {left:SVG_LEFT, right:SVG_RIGHT, straight:SVG_STRAIGHT};
+    // ----- 優先度 & ブロック (LOCK) -----
+    const SVG_PRIORITY = `<svg viewBox="0 0 500 460" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%">
+      ${svgStyles}
+      <text class="lbl" x="16" y="22">優先度プリエンプション (横取り)</text>
+      <text class="note" x="16" y="44">高 priority ルールが、走行中の低 priority アクションを途中で奪える</text>
+
+      <!-- Case A: low → high preempts -->
+      <text class="ev" x="16" y="76">Case A:  低 prio が走行中 → 高 prio 発動</text>
+      <rect x="80" y="86" width="200" height="14" rx="3" fill="#ff5b6a" stroke="#3a0820" stroke-width="0.5"/>
+      <text class="ev" x="180" y="97" text-anchor="middle" fill="#fff">ルール1 ブレーキ (prio 100)</text>
+      <line x1="220" y1="80" x2="220" y2="106" stroke="#a6b3d8" stroke-width="1" stroke-dasharray="2,2"/>
+      <text class="dim" x="220" y="120" text-anchor="middle">ウェーブ検知</text>
+      <rect x="220" y="86" width="200" height="14" rx="3" fill="#2ee6a8" stroke="#042418" stroke-width="0.5"/>
+      <text class="ev" x="320" y="97" text-anchor="middle" fill="#042418">ルール2 速度80% (prio 200)</text>
+      <text class="note" x="16" y="138">→ ルール1のブレーキは中断、ルール2が即座に乗っ取る</text>
+
+      <!-- Case B: high → low ignored -->
+      <text class="ev" x="16" y="170">Case B:  高 prio が走行中 → 低 prio 発動</text>
+      <rect x="80" y="180" width="340" height="14" rx="3" fill="#ff5b6a" stroke="#3a0820" stroke-width="0.5"/>
+      <text class="ev" x="250" y="191" text-anchor="middle" fill="#fff">ルール1 ブレーキ (prio 200) — 完走</text>
+      <line x1="220" y1="174" x2="220" y2="200" stroke="#a6b3d8" stroke-width="1" stroke-dasharray="2,2"/>
+      <text class="dim" x="220" y="214" text-anchor="middle">ウェーブ検知</text>
+      <text class="ev" x="320" y="225" fill="#7f8aa9" text-decoration="line-through">ルール2 (prio 100) ←無視</text>
+      <text class="note" x="16" y="248">→ 走行中ルールが優先度高いほど、後発の低 prio は無視される</text>
+
+      <!-- Case C: equal priority -->
+      <text class="ev" x="16" y="280">Case C:  同じ priority → リスト先発が勝つ</text>
+      <text class="note" x="16" y="298">ルール1 (prio 100) 走行中、ルール2 (prio 100) のパターンが揃っても無視</text>
+
+      <line x1="16" y1="320" x2="484" y2="320" stroke="rgba(120,160,255,0.20)" stroke-width="0.5"/>
+
+      <!-- LOCK -->
+      <text class="lbl" x="16" y="346">アクション無効 (LOCK) — 全ルールをブロック</text>
+      <rect x="80" y="372" width="180" height="14" rx="3" fill="#7f8aa9" stroke="#3a4259" stroke-width="0.5" stroke-dasharray="3,2"/>
+      <text class="ev" x="170" y="383" text-anchor="middle" fill="#fff">アクション無効 1500ms</text>
+      <text class="dim" x="80" y="404" text-anchor="middle">LOCK発動</text>
+      <text class="dim" x="260" y="404" text-anchor="middle">解除</text>
+      <text class="ev" x="320" y="383" fill="#7f8aa9" text-decoration="line-through">他ルール ←priority無関係に全部ブロック</text>
+      <text class="note" x="16" y="424">LOCK 中はセグメント検出・ルールマッチは継続するが、モータへのアクション (ブレーキ/速度/停止) のみ抑制</text>
+      <text class="note" x="16" y="442">例外: 先頭が「アクション無効」のルールは LOCK 中でも発火可 (再アーム/延長用途)</text>
+    </svg>`;
+
+    const SVGS = {left:SVG_LEFT, right:SVG_RIGHT, straight:SVG_STRAIGHT, priority:SVG_PRIORITY};
     const TITLES = {
       left: '💡 左カーブ類のイベントタイミング',
       right: '💡 右カーブ類のイベントタイミング',
-      straight: '💡 直線類のイベントタイミング'
+      straight: '💡 直線類のイベントタイミング',
+      priority: '💡 ルール優先度とアクション無効ブロック'
     };
 
     function show(kind){
